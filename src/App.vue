@@ -1,30 +1,47 @@
 <template>
-  <nav>
-    <router-link to="/">Home</router-link> |
-    <router-link to="/about">About</router-link>
-  </nav>
-  <router-view/>
+  <v-app>
+    <!-- Barra de navegación -->
+    <v-app-bar app color="primary" dark>
+      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+      <v-toolbar-title>Admin Dashboard</v-toolbar-title>
+    </v-app-bar>
+
+    <!-- Barra lateral -->
+    <v-navigation-drawer v-model="drawer" app temporary>
+      <v-list>
+        <v-list-item v-for="item in menuItems" :key="item.title" :to="item.route">
+          <v-list-item-icon>
+            <v-icon>{{ item.icon }}</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>{{ item.title }}</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
+
+    <!-- Contenido principal -->
+    <v-main>
+      <router-view></router-view>
+    </v-main>
+  </v-app>
 </template>
 
+<script>
+export default {
+  data() {
+    return {
+      drawer: false,
+      menuItems: [
+        { title: 'Inicio', icon: 'mdi-home', route: '/' },
+        { title: 'Usuarios', icon: 'mdi-account', route: '/users' },
+        { title: 'Configuración', icon: 'mdi-cog', route: '/settings' },
+      ],
+    };
+  },
+};
+</script>
+
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
-
-nav {
-  padding: 30px;
-}
-
-nav a {
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-nav a.router-link-exact-active {
-  color: #42b983;
-}
+/* Estilos personalizados si es necesario */
 </style>
