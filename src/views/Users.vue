@@ -14,30 +14,41 @@
                 :headers="headers"
                 :items="cars"
                 :loading="loading"
-                loading-text="Cargando vehículos..."
+                :loading-text="loadingText"
                 class="elevation-1"
               >
                 <template #[`item.actions`]="{ item }">
-                  <v-icon
-                    small
-                    class="mr-2 action-icon"
-                    color="black"
-                    v-bind="attrs"
-                    v-on="on"
-                    @click="editCar(item)"
-                  >
-                    mdi-pencil
-                  </v-icon>
-                  <v-icon
-                    small
-                    class="action-icon"
-                    color="black"
-                    v-bind="attrs"
-                    v-on="on"
-                    @click="deleteCar(item.id)"
-                  >
-                    mdi-delete
-                  </v-icon>
+                  <v-tooltip top>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon
+                        small
+                        class="mr-2"
+                        color="primary"
+                        v-bind="attrs"
+                        v-on="on"
+                        @click="editCar(item)"
+                        :disabled="processing"
+                      >
+                        mdi-pencil
+                      </v-icon>
+                    </template>
+                    <span>Modificar</span>
+                  </v-tooltip>
+                  <v-tooltip top>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon
+                        small
+                        color="error"
+                        v-bind="attrs"
+                        v-on="on"
+                        @click="deleteCar(item.id)"
+                        :disabled="processing"
+                      >
+                        mdi-delete
+                      </v-icon>
+                    </template>
+                    <span>Eliminar</span>
+                  </v-tooltip>
                 </template>
                 
                 <template #[`item.car_model_year`]="{ item }">
@@ -52,7 +63,7 @@
       </v-container>
       
       <!-- Diálogo para editar -->
-      <v-dialog v-model="editDialog" max-width="500px">
+      <v-dialog v-model="editDialog" max-width="500px" :persistent="processing">
         <v-card>
           <v-card-title>
             <span class="text-h5">Modificar Vehículo</span>
@@ -61,27 +72,27 @@
             <v-container>
               <v-row>
                 <v-col cols="12" sm="6" md="4">
-                  <v-text-field v-model="editedItem.car" label="Marca"></v-text-field>
+                  <v-text-field v-model="editedItem.car" label="Marca" :disabled="processing"></v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6" md="4">
-                  <v-text-field v-model="editedItem.car_model" label="Modelo"></v-text-field>
+                  <v-text-field v-model="editedItem.car_model" label="Modelo" :disabled="processing"></v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6" md="4">
-                  <v-text-field v-model="editedItem.car_model_year" label="Año"></v-text-field>
+                  <v-text-field v-model="editedItem.car_model_year" label="Año" :disabled="processing"></v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6" md="4">
-                  <v-text-field v-model="editedItem.car_color" label="Color"></v-text-field>
+                  <v-text-field v-model="editedItem.car_color" label="Color" :disabled="processing"></v-text-field>
                 </v-col>
                 <v-col cols="12" sm="6" md="4">
-                  <v-text-field v-model="editedItem.price" label="Precio"></v-text-field>
+                  <v-text-field v-model="editedItem.price" label="Precio" :disabled="processing"></v-text-field>
                 </v-col>
               </v-row>
             </v-container>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" text @click="closeEdit">Cancelar</v-btn>
-            <v-btn color="blue darken-1" text @click="saveEdit">Guardar</v-btn>
+            <v-btn color="blue darken-1" text @click="closeEdit" :disabled="processing">Cancelar</v-btn>
+            <v-btn color="blue darken-1" text @click="saveEdit" :loading="processing">Guardar</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -95,6 +106,11 @@
           </v-btn>
         </template>
       </v-snackbar>
+
+      <!-- Overlay de carga global -->
+      <v-overlay :value="globalLoading" z-index="1000">
+        <v-progress-circular indeterminate size="64"></v-progress-circular>
+      </v-overlay>
     </v-main>
   </v-app>
 </template>
@@ -106,6 +122,9 @@ export default {
     return {
       cars: [],
       loading: true,
+      processing: false, // Para acciones específicas
+      globalLoading: false, // Para carga general
+      loadingText: 'Cargando vehículos...',
       editDialog: false,
       editedIndex: -1,
       editedItem: {
@@ -146,27 +165,48 @@ export default {
   methods: {
     async fetchCars() {
       try {
+        this.globalLoading = true;
+        this.loadingText = 'Cargando vehículos...';
+        
         const response = await fetch('https://myfakeapi.com/api/cars');
         const data = await response.json();
+        
+        if (!response.ok) throw new Error('Error en la respuesta del servidor');
+        
         this.cars = data.cars;
-        this.loading = false;
+        this.showSnackbar('Datos cargados correctamente', 'success');
       } catch (error) {
         console.error('Error fetching cars:', error);
-        this.showSnackbar('Error al cargar los vehículos', 'error');
+        this.showSnackbar(error.message || 'Error al cargar los vehículos', 'error');
+      } finally {
         this.loading = false;
+        this.globalLoading = false;
       }
     },
+    
     editCar(item) {
       this.editedIndex = this.cars.indexOf(item);
       this.editedItem = Object.assign({}, item);
       this.editDialog = true;
     },
-    deleteCar(id) {
-      if (confirm('¿Estás seguro de que quieres eliminar este vehículo?')) {
+    
+    async deleteCar(id) {
+      if (!confirm('¿Estás seguro de que quieres eliminar este vehículo?')) return;
+      
+      try {
+        this.processing = true;
+        // Simulamos una llamada API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         this.cars = this.cars.filter(car => car.id !== id);
-        this.showSnackbar('Vehículo eliminado exitosamente');
+        this.showSnackbar('Vehículo eliminado exitosamente', 'success');
+      } catch (error) {
+        this.showSnackbar('Error al eliminar el vehículo', 'error');
+      } finally {
+        this.processing = false;
       }
     },
+    
     closeEdit() {
       this.editDialog = false;
       this.$nextTick(() => {
@@ -174,18 +214,31 @@ export default {
         this.editedIndex = -1;
       });
     },
-    saveEdit() {
-      if (this.editedIndex > -1) {
-        Object.assign(this.cars[this.editedIndex], this.editedItem);
-        this.showSnackbar('Vehículo modificado exitosamente');
+    
+    async saveEdit() {
+      try {
+        this.processing = true;
+        // Simulamos una llamada API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        if (this.editedIndex > -1) {
+          Object.assign(this.cars[this.editedIndex], this.editedItem);
+          this.showSnackbar('Vehículo modificado exitosamente', 'success');
+        }
+        this.closeEdit();
+      } catch (error) {
+        this.showSnackbar('Error al guardar los cambios', 'error');
+      } finally {
+        this.processing = false;
       }
-      this.closeEdit();
     },
+    
     showSnackbar(message, color = 'success') {
       this.snackbar.message = message;
       this.snackbar.color = color;
       this.snackbar.show = true;
     },
+    
     getYearColor(year) {
       const currentYear = new Date().getFullYear();
       if (year >= currentYear - 2) return 'green';
@@ -197,28 +250,21 @@ export default {
 </script>
 
 <style>
-.modify-btn {
-  background-color: #000000 !important;
-  color: white !important;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-}
-
-.delete-btn {
-  background-color: #000000 !important;
-  color: white !important;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-}
-
-.v-icon {
-  font-size: 16px;
-}
 .v-data-table {
   margin-top: 20px;
+}
+
+.action-icon {
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.action-icon:hover {
+  opacity: 0.7;
+}
+
+.action-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
