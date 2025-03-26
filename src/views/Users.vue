@@ -166,9 +166,10 @@ export default {
     async fetchCars() {
       try {
         this.loading = true;
-        const response = await fetch('https://myfakeapi.com/api/cars1');
+        const response = await fetch('https://myfakeapi.com/api/cars');
         const data = await response.json();
         this.cars = data.cars;
+        this.showSnackbar('Datos cargados correctamente', 'success');
       } catch (error) {
         // Mensaje personalizado aquí
         this.showSnackbar('¡Oops! No se pudieron cargar los vehículos. Intenta nuevamente más tarde.', 'error');
