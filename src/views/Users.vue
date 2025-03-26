@@ -149,12 +149,12 @@ export default {
         color: 'success'
       },
       headers: [
-        { text: 'ID', value: 'id' },
-        { text: 'Marca', value: 'car' },
-        { text: 'Modelo', value: 'car_model' },
-        { text: 'Año', value: 'car_model_year' },
-        { text: 'Color', value: 'car_color' },
-        { text: 'Precio', value: 'price' },
+        { text: 'ID', value: 'id', align: 'start', sortable: true },
+        { text: 'Marca', value: 'car', sortable: true },
+        { text: 'Modelo', value: 'car_model', sortable: true },
+        { text: 'Año', value: 'car_model_year', sortable: true },
+        { text: 'Color', value: 'car_color', sortable: false },
+        { text: 'Precio', value: 'price', sortable: true },
         { text: 'Acciones', value: 'actions', sortable: false }
       ]
     }
@@ -165,22 +165,16 @@ export default {
   methods: {
     async fetchCars() {
       try {
-        this.globalLoading = true;
-        this.loadingText = 'Cargando vehículos...';
-        
-        const response = await fetch('https://myfakeapi.com/api/cars');
+        this.loading = true;
+        const response = await fetch('https://myfakeapi.com/api/cars1');
         const data = await response.json();
-        
-        if (!response.ok) throw new Error('Error en la respuesta del servidor');
-        
         this.cars = data.cars;
-        this.showSnackbar('Datos cargados correctamente', 'success');
       } catch (error) {
-        console.error('Error fetching cars:', error);
-        this.showSnackbar(error.message || 'Error al cargar los vehículos', 'error');
+        // Mensaje personalizado aquí
+        this.showSnackbar('¡Oops! No se pudieron cargar los vehículos. Intenta nuevamente más tarde.', 'error');
+        console.error('Detalles del error:', error);
       } finally {
         this.loading = false;
-        this.globalLoading = false;
       }
     },
     
